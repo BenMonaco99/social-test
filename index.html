@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plaintext — a text-based social platform</title>
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128172;</text></svg>" />
+</head>
+<body>
+  <div id="app" class="layout">
+    <!-- Left rail -->
+    <nav class="rail" id="rail">
+      <div class="brand"><span class="brand-mark">&gt;_</span> <span class="brand-name">plaintext</span></div>
+      <ul class="nav" id="nav"></ul>
+      <button class="btn btn-primary btn-block" id="nav-compose">Post</button>
+      <div class="rail-foot">
+        <button class="account-chip" id="account-chip" title="Switch account"></button>
+      </div>
+    </nav>
+
+    <!-- Center column -->
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn only-mobile" id="menu-btn" aria-label="Menu">☰</button>
+        <h1 class="topbar-title" id="view-title">Home</h1>
+        <div class="topbar-actions">
+          <button class="icon-btn" id="theme-btn" title="Toggle theme">◐</button>
+        </div>
+      </header>
+      <div class="topbar-sub" id="view-sub"></div>
+      <section id="view" class="view" aria-live="polite"></section>
+    </main>
+
+    <!-- Right sidebar -->
+    <aside class="side">
+      <form class="search" id="search-form" role="search">
+        <input id="search-input" type="search" placeholder="Search posts, #tags, @people" autocomplete="off" />
+      </form>
+      <div class="card" id="trends"></div>
+      <div class="card" id="suggestions"></div>
+      <div class="card card-quiet" id="about"></div>
+    </aside>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+
+  <!-- Modal host -->
+  <div class="modal-host" id="modal-host" hidden>
+    <div class="modal" role="dialog" aria-modal="true" id="modal"></div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="js/store.js"></script>
+  <script src="js/seed.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
