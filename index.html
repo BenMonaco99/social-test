@@ -8,7 +8,30 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128172;</text></svg>" />
 </head>
 <body>
-  <div id="app" class="layout">
+  <!-- Sign-in gate: shown until a session exists -->
+  <div id="gate" class="gate" hidden>
+    <div class="gate-card">
+      <div class="gate-brand"><span class="brand-mark">&gt;_</span> plaintext</div>
+      <p class="gate-tag">A small text-based social platform that lives in your browser.</p>
+
+      <div class="gate-google">
+        <div id="google-button" class="google-slot"></div>
+        <p class="gate-note" id="google-note" hidden></p>
+      </div>
+
+      <div class="gate-or"><span>or</span></div>
+
+      <button class="btn btn-block" id="gate-demo">Continue with a demo account</button>
+      <button class="btn btn-block" id="gate-create">Create an account</button>
+
+      <p class="gate-fine">
+        Nothing is uploaded anywhere. Your session, posts and any Google profile
+        details stay in this browser's local storage.
+      </p>
+    </div>
+  </div>
+
+  <div id="app" class="layout" hidden>
     <!-- Left rail -->
     <nav class="rail" id="rail">
       <div class="brand"><span class="brand-mark">&gt;_</span> <span class="brand-name">plaintext</span></div>
@@ -52,6 +75,8 @@
 
   <div class="toasts" id="toasts" aria-live="polite"></div>
 
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/store.js"></script>
   <script src="js/seed.js"></script>
   <script src="js/ui.js"></script>

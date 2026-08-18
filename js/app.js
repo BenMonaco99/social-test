@@ -36,6 +36,8 @@
   };
 
   function render(route) {
+    if (!Store.isSignedIn()) return showGate();
+    hideGate(); // covers a reload that resumes an existing session
     current = route || current || parseHash();
     var host = clear(document.getElementById('view'));
     var sub = clear(document.getElementById('view-sub'));
@@ -315,6 +317,17 @@
             onclick: function () { Store.setSetting('simulate', !s.simulate); render(); }
           }, s.simulate ? 'On' : 'Off')),
         UI.sectionLabel('Account'),
+        row('Signed in',
+          Store.me().email
+            ? Store.me().email + (Store.me().provider === 'google' ? ' · Google account' : '')
+            : '@' + Store.me().handle + ' · demo account, no email attached',
+          el('button', { class: 'btn btn-sm btn-danger', onclick: signOut }, 'Sign out')),
+        row('Google sign-in',
+          global.Auth.isConfigured()
+            ? 'Client ID ending ' + global.Auth.configuredClientId().slice(-14) + ' is in use for this browser.'
+            : 'Not configured. Add a Google OAuth client ID to enable the Google button on the sign-in screen.',
+          el('button', { class: 'btn btn-sm', onclick: clientIdModal },
+            global.Auth.isConfigured() ? 'Change' : 'Configure')),
         row('Switch account', 'Sign in as one of the seeded accounts to see the app from another side.',
           el('button', { class: 'btn btn-sm', onclick: accountModal }, 'Switch')),
         row('Create account', 'Add a new account to this browser.',
@@ -439,7 +452,10 @@
         ]),
         u.id === me.id ? el('span', { class: 'pill', style: 'margin-left:auto', text: 'current' }) : null
       ])));
-    })), [el('button', { class: 'btn', onclick: function () { UI.closeModal(); newAccountModal(); } }, 'Create new account')]);
+    })), [
+      el('button', { class: 'btn', onclick: function () { UI.closeModal(); newAccountModal(); } }, 'Create new account'),
+      el('button', { class: 'btn btn-danger', onclick: function () { UI.closeModal(); signOut(); } }, 'Sign out')
+    ]);
   }
 
   function newAccountModal() {
@@ -458,6 +474,7 @@
           var res = Store.createAccount(name.value, handle.value, bio.value);
           if (res.error) return UI.toast(res.error);
           UI.closeModal();
+          hideGate();
           UI.toast('Signed in as @' + res.user.handle);
           location.hash = '#/home';
           render(parseHash());
@@ -588,6 +605,147 @@
     UI.openModal('New post', box);
   }
 
+  /* ---------- sign-in gate ---------- */
+
+  function showGate() {
+    document.getElementById('app').hidden = true;
+    var gate = document.getElementById('gate');
+    gate.hidden = false;
+    document.title = 'Sign in · plaintext';
+    mountGoogleButton();
+  }
+
+  function hideGate() {
+    document.getElementById('gate').hidden = true;
+    document.getElementById('app').hidden = false;
+    document.title = 'plaintext';
+  }
+
+  function gateError(message) {
+    var slot = document.getElementById('google-note');
+    slot.hidden = false;
+    clear(slot);
+    UI.append(slot, el('span', { class: 'gate-error', text: message }));
+  }
+
+  function gateNote(children) {
+    var slot = document.getElementById('google-note');
+    slot.hidden = false;
+    clear(slot);
+    UI.append(slot, children);
+  }
+
+  function mountGoogleButton() {
+    var slot = clear(document.getElementById('google-button'));
+    var note = document.getElementById('google-note');
+    note.hidden = true;
+    clear(note);
+
+    if (!global.Auth.isConfigured()) return offerClientIdSetup();
+
+    global.Auth.renderButton(slot, {
+      theme: Store.settings.theme,
+      onSuccess: onGoogleProfile,
+      onError: gateError
+    }).catch(function (err) {
+      gateNote([
+        el('div', { text: err.message }),
+        el('div', { style: 'margin-top:6px' }, [
+          'You can still ',
+          el('button', { class: 'linkish', onclick: demoPicker }, 'use a demo account'),
+          '.'
+        ])
+      ]);
+    });
+  }
+
+  function offerClientIdSetup() {
+    gateNote([
+      el('div', {}, [
+        el('b', { text: 'Google sign-in is not configured yet.' }),
+        ' Add a Google OAuth client ID for this origin (',
+        el('code', { text: location.origin }), ') and it will appear here.'
+      ]),
+      global.Auth.fileProtocol()
+        ? el('div', { style: 'margin-top:6px' }, 'Google rejects file:// pages — serve the app over http first, e.g. python3 -m http.server 8000.')
+        : null,
+      el('div', { style: 'margin-top:8px' }, [
+        el('button', { class: 'linkish', onclick: clientIdModal }, 'Enter a client ID'),
+        ' · ',
+        el('a', {
+          href: 'https://console.cloud.google.com/apis/credentials',
+          target: '_blank', rel: 'noopener noreferrer'
+        }, 'Get one from Google')
+      ])
+    ]);
+  }
+
+  function clientIdModal() {
+    var input = el('input', {
+      placeholder: '1234567890-abc123.apps.googleusercontent.com',
+      value: global.Auth.configuredClientId()
+    });
+    UI.openModal('Google client ID', [
+      el('p', { style: 'margin:0;color:var(--text-dim);font-size:13px' },
+        'Create an OAuth 2.0 Web application client in Google Cloud, add ' +
+        location.origin + ' as an authorized JavaScript origin, then paste the client ID here. ' +
+        'It is stored in this browser only.'),
+      el('div', { class: 'field' }, [el('label', { text: 'Client ID' }), input])
+    ], [
+      el('button', { class: 'btn', onclick: UI.closeModal }, 'Cancel'),
+      el('button', {
+        class: 'btn btn-primary',
+        onclick: function () {
+          global.Auth.setClientId(input.value);
+          UI.closeModal();
+          UI.toast(input.value.trim() ? 'Client ID saved' : 'Client ID cleared');
+          if (Store.isSignedIn()) render(parseHash()); else mountGoogleButton();
+        }
+      }, 'Save')
+    ]);
+  }
+
+  function onGoogleProfile(profile) {
+    var res = Store.signInWithGoogle(profile);
+    if (res.error) return gateError(res.error);
+    hideGate();
+    location.hash = '#/home';
+    render(parseHash());
+    UI.toast(res.created ? 'Welcome, ' + res.user.name : 'Signed in as @' + res.user.handle);
+  }
+
+  function demoPicker() {
+    var users = Store.allUsers();
+    UI.openModal('Choose a demo account', el('ul', { class: 'menu-list' }, users.map(function (u) {
+      return el('li', {}, el('button', {
+        onclick: function () {
+          Store.switchUser(u.id, u.provider || 'demo');
+          UI.closeModal();
+          hideGate();
+          location.hash = '#/home';
+          render(parseHash());
+          UI.toast('Signed in as @' + u.handle);
+        }
+      }, el('span', { style: 'display:flex;align-items:center;gap:10px' }, [
+        UI.avatar(u, 'sm'),
+        el('span', {}, [
+          el('div', { style: 'font-weight:600' }, u.name),
+          el('div', { style: 'color:var(--text-dim);font-size:12px' }, '@' + u.handle)
+        ])
+      ])));
+    })));
+  }
+
+  function signOut() {
+    UI.confirmDialog('Sign out?', 'Your posts stay in this browser — you can sign back in any time.',
+      'Sign out', function () {
+        global.Auth.signOut();
+        Store.signOut();
+        showGate();
+        UI.toast('Signed out');
+      });
+  }
+
   /* ---------- boot ---------- */
 
   function boot() {
@@ -599,6 +757,8 @@
     window.addEventListener('hashchange', go);
     document.addEventListener('keydown', onKey);
 
+    document.getElementById('gate-demo').addEventListener('click', demoPicker);
+    document.getElementById('gate-create').addEventListener('click', newAccountModal);
     document.getElementById('nav-compose').addEventListener('click', composeModal);
     document.getElementById('account-chip').addEventListener('click', accountModal);
     document.getElementById('theme-btn').addEventListener('click', function () {
@@ -626,6 +786,7 @@
       }
     }, 30000);
 
+    if (!Store.isSignedIn()) { showGate(); return; }
     if (!location.hash) location.hash = '#/home';
     go();
   }

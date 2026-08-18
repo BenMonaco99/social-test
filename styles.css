@@ -152,6 +152,7 @@ a:hover { text-decoration: underline; }
   font-family: var(--mono); font-size: 14px; font-weight: 700; color: #fff;
   user-select: none;
 }
+img.avatar { object-fit: cover; background: var(--bg-sunk); }
 .avatar.sm { width: 30px; height: 30px; font-size: 11px; border-radius: 8px; }
 .avatar.lg { width: 68px; height: 68px; font-size: 22px; border-radius: 16px; }
 
@@ -288,3 +289,48 @@ a:hover { text-decoration: underline; }
   .main { border-right: 0; }
   .actions { max-width: none; }
 }
+
+/* ---------- sign-in gate ---------- */
+.gate {
+  min-height: 100vh;
+  display: grid; place-items: center;
+  padding: 32px 16px;
+  background:
+    radial-gradient(1100px 460px at 50% -10%, var(--accent-soft), transparent 70%),
+    var(--bg);
+}
+.gate-card {
+  width: min(400px, 100%);
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 30px 26px 24px;
+  box-shadow: 0 18px 50px #0000000f;
+  text-align: center;
+}
+.gate-brand {
+  font-family: var(--mono); font-size: 22px; font-weight: 600;
+  letter-spacing: -0.02em; display: flex; gap: 9px; justify-content: center; align-items: center;
+}
+.gate-tag { color: var(--text-dim); font-size: 14px; margin: 8px 0 22px; }
+.gate-google { min-height: 44px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.google-slot { display: flex; justify-content: center; min-height: 0; }
+.gate-note {
+  margin: 0; font-size: 12.5px; color: var(--text-dim); line-height: 1.55; text-align: left;
+  background: var(--bg-sunk); border: 1px dashed var(--line-strong);
+  border-radius: 10px; padding: 10px 12px; width: 100%;
+}
+.gate-note code { font-family: var(--mono); font-size: 11.5px; }
+.gate-note .linkish {
+  background: none; border: 0; padding: 0; color: var(--accent);
+  font-weight: 600; cursor: pointer; text-decoration: underline;
+}
+.gate-or {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--text-faint); font-size: 12px; margin: 18px 0 14px;
+}
+.gate-or::before, .gate-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.gate-card .btn-block { margin-top: 8px; }
+.gate-fine { color: var(--text-faint); font-size: 12px; line-height: 1.6; margin: 20px 0 0; }
+.gate-error { color: #d33; font-size: 13px; margin: 10px 0 0; }
+.provider-line { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 13px; }

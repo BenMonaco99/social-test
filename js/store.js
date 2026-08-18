@@ -352,11 +352,98 @@
   function isBookmarked(id) { return (me().bookmarks || []).indexOf(id) !== -1; }
   function isFollowing(userId) { return me().following.indexOf(userId) !== -1; }
 
-  function switchUser(userId) {
+  function isSignedIn() { return !!state.users[state.session.currentUserId]; }
+
+  function switchUser(userId, provider) {
     if (!state.users[userId]) return false;
     state.session.currentUserId = userId;
+    state.session.provider = provider || state.users[userId].provider || 'demo';
     emit();
     return true;
+  }
+
+  function signOut() {
+    state.session.currentUserId = null;
+    state.session.provider = null;
+    emit();
+  }
+
+  function userByGoogleId(sub) {
+    var ids = Object.keys(state.users);
+    for (var i = 0; i < ids.length; i++) {
+      if (state.users[ids[i]].googleId === sub) return state.users[ids[i]];
+    }
+    return null;
+  }
+
+  function userByEmail(email) {
+    var target = String(email || '').toLowerCase();
+    if (!target) return null;
+    var ids = Object.keys(state.users);
+    for (var i = 0; i < ids.length; i++) {
+      if ((state.users[ids[i]].email || '').toLowerCase() === target) return state.users[ids[i]];
+    }
+    return null;
+  }
+
+  // Turn an email or display name into a handle nobody else is using.
+  function handleFrom(seed) {
+    var base = String(seed || '').split('@')[0].replace(/[^A-Za-z0-9_]/g, '').slice(0, 16).toLowerCase();
+    if (!base) base = 'user';
+    var candidate = base, n = 1;
+    while (userByHandle(candidate)) { n += 1; candidate = (base + n).slice(0, 20); }
+    return candidate;
+  }
+
+  /**
+   * Sign in with a verified-enough Google profile: link to the existing account
+   * for that Google id (or email), otherwise create one.
+   * Returns { user, created }.
+   */
+  function signInWithGoogle(profile) {
+    if (!profile || !profile.sub) return { error: 'Google did not return an account.' };
+
+    var existing = userByGoogleId(profile.sub) || userByEmail(profile.email);
+    if (existing) {
+      existing.googleId = profile.sub;
+      existing.email = profile.email || existing.email;
+      existing.provider = 'google';
+      if (profile.picture) existing.avatarUrl = profile.picture;
+      switchUser(existing.id, 'google');
+      return { user: existing, created: false };
+    }
+
+    var u = {
+      id: uid('u'),
+      handle: handleFrom(profile.email || profile.name),
+      name: String(profile.name || '').slice(0, 50) || 'Google user',
+      bio: '',
+      joinedAt: Date.now(),
+      following: [],
+      bookmarks: [],
+      notifsSeenAt: 0,
+      provider: 'google',
+      googleId: profile.sub,
+      email: profile.email || '',
+      avatarUrl: profile.picture || ''
+    };
+    state.users[u.id] = u;
+    state.session.currentUserId = u.id;
+    state.session.provider = 'google';
+    welcome(u);
+    emit();
+    return { user: u, created: true };
+  }
+
+  // Give a brand new account a timeline and a couple of followers, so the first
+  // visit is not an empty room.
+  function welcome(u) {
+    var others = allUsers().filter(function (o) { return o.id !== u.id && !o.provider; });
+    others.slice(0, 4).forEach(function (o) { u.following.push(o.id); });
+    others.slice(0, 2).forEach(function (o) {
+      if (o.following.indexOf(u.id) === -1) o.following.push(u.id);
+      notify(u.id, 'follow', o.id, null);
+    });
   }
 
   function createAccount(name, handle, bio) {
@@ -371,10 +458,13 @@
       joinedAt: Date.now(),
       following: [],
       bookmarks: [],
-      notifsSeenAt: 0
+      notifsSeenAt: 0,
+      provider: 'local'
     };
     state.users[u.id] = u;
     state.session.currentUserId = u.id;
+    state.session.provider = 'local';
+    welcome(u);
     emit();
     return { user: u };
   }
@@ -411,8 +501,11 @@
     var loaded = load();
     state = loaded || global.Seed.build();
     if (!state.settings) state.settings = { theme: 'light', simulate: true };
+    if (!state.session) state.session = { currentUserId: null, provider: null };
+    // A session pointing at an account that no longer exists is a signed-out session.
     if (!state.users[state.session.currentUserId]) {
-      state.session.currentUserId = Object.keys(state.users)[0];
+      state.session.currentUserId = null;
+      state.session.provider = null;
     }
     return state;
   }
@@ -497,7 +590,11 @@
     isReposted: isReposted,
     isBookmarked: isBookmarked,
     isFollowing: isFollowing,
+    isSignedIn: isSignedIn,
     switchUser: switchUser,
+    signOut: signOut,
+    signInWithGoogle: signInWithGoogle,
+    userByGoogleId: userByGoogleId,
     createAccount: createAccount,
     updateProfile: updateProfile,
     setSetting: setSetting,

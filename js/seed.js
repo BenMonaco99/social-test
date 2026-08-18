@@ -57,7 +57,7 @@
       users: {},
       posts: {},
       notifications: [],
-      session: { currentUserId: null },
+      session: { currentUserId: null, provider: null },
       settings: { theme: 'light', simulate: true },
       seq: { u: 0, p: 0, n: 0 }
     };
@@ -78,7 +78,7 @@
       byHandle[row[0]] = id;
     });
     state.seq.u = PEOPLE.length;
-    state.session.currentUserId = byHandle.you;
+    state.session.currentUserId = null; // signed out until you pick an account
 
     // Everyone follows most other people; "you" starts with a smaller circle.
     Object.keys(state.users).forEach(function (id) {

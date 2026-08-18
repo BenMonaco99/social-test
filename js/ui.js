@@ -83,6 +83,19 @@
   }
 
   function avatar(user, size) {
+    if (user.avatarUrl) {
+      var img = el('img', {
+        class: 'avatar' + (size ? ' ' + size : ''),
+        src: user.avatarUrl, alt: '', title: '@' + user.handle,
+        referrerpolicy: 'no-referrer'
+      });
+      // If the picture fails to load, fall back to the initials tile.
+      img.addEventListener('error', function () {
+        var stand = avatar({ handle: user.handle, name: user.name }, size);
+        if (img.parentNode) img.parentNode.replaceChild(stand, img);
+      });
+      return img;
+    }
     var hue = HUES[Math.abs(global.Seed.hash(user.handle)) % HUES.length];
     return el('div', {
       class: 'avatar' + (size ? ' ' + size : ''),
